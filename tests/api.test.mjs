@@ -11,8 +11,11 @@ test('fluxo de atendimento, validação e persistência após reiniciar', async 
   const dbPath = path.join(directory,'test.sqlite');
   let server = createApp(dbPath); server.listen(0,'127.0.0.1'); await once(server,'listening');
   let base = `http://127.0.0.1:${server.address().port}`;
-  const call = async (url,method='GET',data) => { const r=await fetch(base+url,{method,headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined});return {status:r.status,data:await r.json()}; };
+  let cookie='';
+  const call = async (url,method='GET',data) => { const r=await fetch(base+url,{method,headers:{...(data?{'Content-Type':'application/json'}:{}),Cookie:cookie},body:data?JSON.stringify(data):undefined});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,data:await r.json()}; };
   try {
+    assert.equal((await call('/api/clients')).status,401);
+    assert.equal((await call('/api/auth/register','POST',{company:'Empresa de teste',name:'Pessoa de teste',email:'admin@example.com',password:'senha-ficticia-segura'})).status,201);
     assert.equal((await call('/api/clients','POST',{name:' '})).status,400);
     const client=await call('/api/clients','POST',{name:'Empresa fictícia',email:'contato@example.com'}); assert.equal(client.status,201);
     const payload={client_id:client.data.id,title:'Impressora indisponível',description:'Verificar conexão.',owner:'Equipe de demonstração',priority:'Alta',due_date:'2026-10-03'};
