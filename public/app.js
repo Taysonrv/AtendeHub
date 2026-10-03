@@ -1,4 +1,4 @@
-import { filterTickets } from './filters.mjs';
+import { filterTickets, sortTickets, ticketPage } from './filters.mjs';
 import { periodTickets, summarize, groupTickets, dailyVolume, exportCsv, closureMetrics } from './analytics.mjs';
 import { demonstration } from './demo.mjs';
 const $ = (selector) => document.querySelector(selector);
@@ -9,6 +9,7 @@ const late = (t) => t.status !== 'Concluído' && t.due_date < today();
 let clients = [], tickets = [], storedClients = [], storedTickets = [], demo = false, period = 0, view = 'dashboard', editing = '', selected = null, query = '', statusFilter = '', clientFilter = null, ownerFilter = null, priorityFilter = null, toastTimer;
 let account=null, team=[], authMode='login';
 let editingRecord=null;
+let ticketOrder='recent', ticketPageNumber=1, ticketPageSize=10;
 async function api(url, method = 'GET', data) {
   const response = await fetch(`/api${url}`, { method, headers: data ? {'Content-Type':'application/json'} : {}, body: data ? JSON.stringify(data) : undefined });
   const result = await response.json(); if (!response.ok) { if(response.status===401 && account) showAuth('login');throw new Error(result.error || 'Não foi possível concluir.'); } return result;
@@ -53,12 +54,14 @@ function render() {
     $('#content').innerHTML = `${statCards(list)}<div class="insight-strip"><span class="insight-symbol" aria-hidden="true">◇</span><div><strong>${summary.late?`${summary.late} atendimento(s) precisam de atenção ao prazo.`:'Sua fila está sem chamados atrasados neste recorte.'}</strong><span>${summary.high} pendente(s) de prioridade alta · ${summary.completion}% dos chamados do período estão concluídos.</span></div><button data-metric="late">Ver prioridades</button></div><div class="charts-grid">${chartCard('Ritmo de atendimento','Chamados abertos nos últimos 7 dias',bars(dailyVolume(list)), '<span class="chart-tag">VOLUME</span>')}${chartCard('Distribuição da operação','Situação atual dos chamados do período',donut(list))}</div><div class="charts-grid secondary-grid">${chartCard('Demanda por cliente','Os cinco clientes com mais chamados',bars(groupTickets(list,'client_name').slice(0,5),'horizontal','client_name'))}${chartCard('Prioridade dos chamados','Distribuição por prioridade cadastrada',donut(list,'priority'))}</div><div class="card"><div class="card-heading"><div><h2>Atendimentos recentes</h2><p class="muted">Do primeiro contato à resolução.</p></div><button data-view="tickets">Ver todos os chamados</button></div>${table(list.slice(0,6))}</div>`;
   } else if (view === 'tickets') {
     const options=(rows,current)=>rows.map(([value,label])=>`<option value="${esc(value)}" ${String(value)===String(current??'')?'selected':''}>${esc(label)}</option>`).join('');
-    $('#content').innerHTML = `<div class="card"><div class="card-heading"><h2>Central de chamados</h2><button id="export-tickets">Exportar seleção</button></div><div class="ticket-filters"><label>Buscar<input id="search" placeholder="Número, título, descrição ou nome" value="${esc(query)}"></label><label>Situação<select id="status-filter">${options([['','Todas as situações'],...['Aberto','Em andamento','Concluído','Atrasados','Pendentes'].map(s=>[s,s])],statusFilter)}</select></label><label>Cliente<select id="client-filter">${options([['','Todos os clientes'],...clients.map(c=>[c.id,c.name])],clientFilter)}</select></label><label>Responsável<select id="owner-filter">${options([['','Todos os responsáveis'],...[...new Set(tickets.map(t=>t.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(s=>[s,s])],ownerFilter)}</select></label><label>Prioridade<select id="priority-filter">${options([['','Todas as prioridades'],...['Alta','Normal','Baixa'].map(s=>[s,s])],priorityFilter)}</select></label><button id="clear-filters">Limpar filtros</button></div><p id="filter-count" class="muted" role="status" aria-live="polite"></p><div id="ticket-list"></div></div>`;
-    renderList(); $('#search').addEventListener('input',e=>{query=e.target.value;renderList();});
-    $('#status-filter').addEventListener('change',e=>{statusFilter=e.target.value;renderList();});
-    $('#client-filter').addEventListener('change',e=>{clientFilter=e.target.value?Number(e.target.value):null;renderList();});
-    $('#owner-filter').addEventListener('change',e=>{ownerFilter=e.target.value||null;renderList();});
-    $('#priority-filter').addEventListener('change',e=>{priorityFilter=e.target.value||null;renderList();});
+    $('#content').innerHTML = `<div class="card"><div class="card-heading"><h2>Central de chamados</h2><button id="export-tickets">Exportar seleção</button></div><div class="ticket-filters"><label>Buscar<input id="search" placeholder="Número, título, descrição ou nome" value="${esc(query)}"></label><label>Situação<select id="status-filter">${options([['','Todas as situações'],...['Aberto','Em andamento','Concluído','Atrasados','Pendentes'].map(s=>[s,s])],statusFilter)}</select></label><label>Cliente<select id="client-filter">${options([['','Todos os clientes'],...clients.map(c=>[c.id,c.name])],clientFilter)}</select></label><label>Responsável<select id="owner-filter">${options([['','Todos os responsáveis'],...[...new Set(tickets.map(t=>t.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(s=>[s,s])],ownerFilter)}</select></label><label>Prioridade<select id="priority-filter">${options([['','Todas as prioridades'],...['Alta','Normal','Baixa'].map(s=>[s,s])],priorityFilter)}</select></label><button id="clear-filters">Limpar filtros</button></div><p id="filter-count" class="muted" role="status" aria-live="polite"></p><div class="list-controls"><label>Ordenar por<select id="ticket-order">${options([['recent','Mais recentes'],['oldest','Mais antigos'],['deadline','Prazo mais próximo'],['priority','Prioridade'],['client','Cliente']],ticketOrder)}</select></label><label>Por página<select id="ticket-page-size">${options([[10,'10 chamados'],[25,'25 chamados'],[50,'50 chamados']],ticketPageSize)}</select></label></div><div id="ticket-list"></div><div id="ticket-pagination" class="pagination"></div></div>`;
+    $('#ticket-order').addEventListener('change',e=>{ticketOrder=e.target.value;ticketPageNumber=1;renderList();});
+    $('#ticket-page-size').addEventListener('change',e=>{ticketPageSize=Number(e.target.value);ticketPageNumber=1;renderList();});
+    renderList(); $('#search').addEventListener('input',e=>{query=e.target.value;ticketPageNumber=1;renderList();});
+    $('#status-filter').addEventListener('change',e=>{statusFilter=e.target.value;ticketPageNumber=1;renderList();});
+    $('#client-filter').addEventListener('change',e=>{clientFilter=e.target.value?Number(e.target.value):null;ticketPageNumber=1;renderList();});
+    $('#owner-filter').addEventListener('change',e=>{ownerFilter=e.target.value||null;ticketPageNumber=1;renderList();});
+    $('#priority-filter').addEventListener('change',e=>{priorityFilter=e.target.value||null;ticketPageNumber=1;renderList();});
     $('#clear-filters').addEventListener('click',()=>{clearFilters();render();});
     $('#export-tickets').addEventListener('click',()=>downloadReport(filteredTickets()));
   } else if(view==='performance') {
@@ -75,11 +78,14 @@ function render() {
     $('#new-client').addEventListener('click',()=>openEditor('client'));
   }
 }
-const filteredTickets = () => filterTickets(scopedTickets(),{query,client:clientFilter,owner:ownerFilter,priority:priorityFilter,status:statusFilter},today());
+const filteredTickets = () => sortTickets(filterTickets(scopedTickets(),{query,client:clientFilter,owner:ownerFilter,priority:priorityFilter,status:statusFilter},today()),ticketOrder);
 function renderList() {
-  const list = filteredTickets();
-  $('#filter-count').textContent=`${list.length} de ${scopedTickets().length} chamado(s) no período`;
+  const all=filteredTickets();const result=ticketPage(all,ticketPageNumber,ticketPageSize);ticketPageNumber=result.page;const list=result.items;
+  $('#filter-count').textContent=`${all.length} de ${scopedTickets().length} chamado(s) no período`;
   $('#ticket-list').innerHTML = list.length?table(list):'<div class="empty"><h3>Nenhum chamado encontrado</h3><p>Ajuste os filtros ou abra um novo atendimento.</p></div>';
+  $('#ticket-pagination').innerHTML=`<button id="previous-page" ${result.page===1?'disabled':''}>Anterior</button><span>Página ${result.page} de ${result.pages} · ${all.length?`${(result.page-1)*ticketPageSize+1}–${Math.min(result.page*ticketPageSize,all.length)} de ${all.length}`:'0 resultados'}</span><button id="next-page" ${result.page===result.pages?'disabled':''}>Próxima</button>`;
+  $('#previous-page').addEventListener('click',()=>{ticketPageNumber--;renderList();});
+  $('#next-page').addEventListener('click',()=>{ticketPageNumber++;renderList();});
 }
 function field(label,name,type='text',attrs='') { return `<label for="field-${name}">${label}</label><input id="field-${name}" name="${name}" type="${type}" ${attrs}>`; }
 function openEditor(type,record=null) {
@@ -110,11 +116,11 @@ async function openDetail(id, reopen=true) {
   $('#note-form').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await api(`/tickets/${id}/events`,'POST',{text:$('#note').value});await openDetail(id,false);toast('Atualização registrada.');}catch(error){toast(error.message);}finally{button.disabled=false;}});
   if(reopen) $('#detail').showModal();
 }
-function clearFilters(){clientFilter=null;ownerFilter=null;priorityFilter=null;statusFilter='';query='';}
+function clearFilters(){ticketPageNumber=1;clientFilter=null;ownerFilter=null;priorityFilter=null;statusFilter='';query='';}
 document.addEventListener('click',e=>{const button=e.target.closest('[data-edit-client]');if(button)openEditor('client',clients.find(c=>c.id===Number(button.dataset.editClient)));});
 document.addEventListener('click',async e=>{const button=e.target.closest('[data-user]');if(!button)return;button.disabled=true;try{await api(`/team/${button.dataset.user}`,'PATCH',{active:button.dataset.active==='true'});await refresh();toast('Acesso atualizado.');}catch(error){toast(error.message);}finally{button.disabled=false;}});
 document.addEventListener('click',async e=>{const nav=e.target.closest('[data-view]'),ticket=e.target.closest('[data-ticket]'),client=e.target.closest('[data-client]'),metric=e.target.closest('[data-metric]'),group=e.target.closest('[data-group]');if(nav){view=nav.dataset.view;clearFilters();render();}if(ticket){try{await openDetail(Number(ticket.dataset.ticket));}catch(error){toast(error.message);}}if(client){clearFilters();clientFilter=Number(client.dataset.client);view='tickets';render();}if(metric){clearFilters();statusFilter={pending:'Pendentes',progress:'Em andamento',late:'Atrasados',completed:'Concluído'}[metric.dataset.metric];view='tickets';render();}if(group){clearFilters();const name=group.dataset.name;if(group.dataset.group==='status')statusFilter=name;if(group.dataset.group==='owner')ownerFilter=name;if(group.dataset.group==='priority')priorityFilter=name;if(group.dataset.group==='client_name')clientFilter=clients.find(c=>c.name===name)?.id;view='tickets';render();}});
-$('#period').addEventListener('change',e=>{period=Number(e.target.value);render();});$('#demo-toggle').addEventListener('change',e=>{demo=e.target.checked;clearFilters();setSource();render();});
+$('#period').addEventListener('change',e=>{period=Number(e.target.value);ticketPageNumber=1;render();});$('#demo-toggle').addEventListener('change',e=>{demo=e.target.checked;clearFilters();setSource();render();});
 $('#new-ticket').addEventListener('click',()=>openEditor('ticket'));
 $('#close-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#close-detail').addEventListener('click',()=>$('#detail').close());
 $('#editor-form').addEventListener('submit',async e=>{e.preventDefault();$('#save').disabled=true;$('#form-error').textContent='';try{const data=Object.fromEntries(new FormData(e.target));if(editing==='password'&&data.password!==data.confirmation)throw new Error('A confirmação da senha não confere.');delete data.confirmation;let url={client:'/clients',ticket:'/tickets',user:'/team',password:'/auth/password',resolve:'/tickets'}[editing];const method=editingRecord?'PATCH':'POST';if(editingRecord){url+=`/${editingRecord.id}`;if(['ticket','resolve'].includes(editing))data.version=editingRecord.version;}if(editing==='resolve')data.status='Concluído';await api(url,method,data);$('#editor').close();await refresh();if(editingRecord&&['ticket','resolve'].includes(editing))await openDetail(editingRecord.id);toast(editingRecord?'Atendimento atualizado.':{client:'Cliente cadastrado.',ticket:'Chamado aberto.',user:'Usuário cadastrado.',password:'Senha alterada.'}[editing]);}catch(error){$('#form-error').textContent=error.message;}finally{$('#save').disabled=false;}});
