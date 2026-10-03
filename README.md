@@ -58,3 +58,5 @@ O tempo até a conclusão considera horas corridas desde a abertura até a últi
 ## Independência
 
 O projeto não contém código, histórico, dados, credenciais ou regras internas do TechLead Hub. Qualquer reutilização futura exige esclarecer os direitos e a autorização aplicável.
+
+A central de chamados permite combinar busca por número, título, descrição e nomes (sem distinção de acentos), situação, cliente, responsável e prioridade. A exportação da central inclui apenas a seleção visível; os relatórios continuam exportando o período completo.

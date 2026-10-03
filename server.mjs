@@ -6,7 +6,7 @@ import { openDatabase } from './database.mjs';
 import { authentication, failure, validEmail, validPassword, hashPassword, verifyPassword } from './auth.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const files = { '/':['index.html','text/html'], '/app.js':['app.js','text/javascript'], '/analytics.mjs':['analytics.mjs','text/javascript'], '/demo.mjs':['demo.mjs','text/javascript'], '/styles.css':['styles.css','text/css'], '/favicon.svg':['favicon.svg','image/svg+xml'] };
+const files = { '/':['index.html','text/html'], '/app.js':['app.js','text/javascript'], '/analytics.mjs':['analytics.mjs','text/javascript'], '/demo.mjs':['demo.mjs','text/javascript'], '/filters.mjs':['filters.mjs','text/javascript'], '/styles.css':['styles.css','text/css'], '/favicon.svg':['favicon.svg','image/svg+xml'] };
 const required = (value, label, max=200) => {
   if (typeof value !== 'string' || !value.trim() || value.length > max) throw failure(400, `${label}: informe um valor entre 1 e ${max} caracteres.`);
   return value.trim();
