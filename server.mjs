@@ -63,7 +63,7 @@ export function createApp(databasePath = ':memory:') {
         }
       }
       if (url.pathname.startsWith('/api/')) return send(res, 404, { error: 'Recurso não encontrado.' });
-      const files = { '/': ['index.html','text/html'], '/app.js': ['app.js','text/javascript'], '/styles.css': ['styles.css','text/css'], '/favicon.svg': ['favicon.svg','image/svg+xml'] };
+      const files = { '/': ['index.html','text/html'], '/app.js': ['app.js','text/javascript'], '/analytics.mjs': ['analytics.mjs','text/javascript'], '/demo.mjs': ['demo.mjs','text/javascript'], '/styles.css': ['styles.css','text/css'], '/favicon.svg': ['favicon.svg','image/svg+xml'] };
       const file = files[url.pathname]; if (!file || req.method !== 'GET') return send(res, 404, { error: 'Página não encontrada.' });
       res.writeHead(200, { 'Content-Type': `${file[1]}; charset=utf-8` }); res.end(readFileSync(path.join(root,'public',file[0])));
     } catch (e) { send(res, e.status || 500, { error: e.status ? e.message : 'Não foi possível concluir a operação.' }); }

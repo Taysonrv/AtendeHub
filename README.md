@@ -10,6 +10,10 @@ Aplicação web independente para organizar atendimentos de pequenas empresas de
 - Registro de andamento, conclusão e reabertura.
 - Histórico de atualizações e painel de acompanhamento.
 - Interface responsiva e persistência em SQLite.
+- Painel escuro com cards interativos, gráficos de barras e rosca.
+- Filtro por período de abertura, desempenho por responsável e relatórios.
+- Exportação CSV e impressão de relatórios (use Salvar como PDF no navegador).
+- Modo de demonstração com dados fictícios, sem gravação no banco.
 
 ## Executar
 
@@ -30,7 +34,9 @@ npm test
 
 Esta versão não tem autenticação nem separação de dados entre empresas. O servidor aceita conexões somente da própria máquina. Use dados fictícios. Não exponha este servidor na internet nem utilize dados reais de clientes.
 
-Antes de um piloto comercial: implementar contas, autorização e isolamento entre empresas; configurar hospedagem com HTTPS, backups e restauração; definir tratamento dos dados, suporte e cobrança. Relatórios e exportações ainda não foram implementados.
+Antes de um piloto comercial: implementar contas, autorização e isolamento entre empresas; configurar hospedagem com HTTPS, backups e restauração; definir tratamento dos dados, suporte e cobrança.
+
+O filtro de período considera a data de abertura. A situação mostrada nos indicadores é a situação atual dos chamados selecionados. O percentual concluído não mede SLA nem produtividade individual. O gráfico diário apresenta os últimos sete dias dentro do recorte selecionado. O modo de demonstração é somente leitura e não altera os registros locais.
 
 ## Independência
 
