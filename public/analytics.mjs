@@ -32,7 +32,13 @@ export function csvCell(value) {
   if (/^[\s\u0000-\u001f]*[=+@-]/.test(text)) text = `'${text}`;
   return `"${text.replaceAll('"','""')}"`;
 }
+export function closureMetrics(tickets) {
+  const completed=tickets.filter(t=>t.status==='Concluído');
+  const measured=completed.filter(t=>t.closed_at && Number.isFinite(Date.parse(t.closed_at)) && Number.isFinite(Date.parse(t.created_at)) && Date.parse(t.closed_at)>=Date.parse(t.created_at));
+  const averageHours=measured.length?measured.reduce((sum,t)=>sum+(Date.parse(t.closed_at)-Date.parse(t.created_at))/3600000,0)/measured.length:null;
+  return { measured:measured.length, unmeasured:completed.length-measured.length, averageHours, onTime:measured.filter(t=>localDate(t.closed_at)<=t.due_date).length };
+}
 export function exportCsv(tickets) {
-  const rows = [['Número','Cliente','Título','Responsável','Situação','Prioridade','Prazo','Criado em'], ...tickets.map(t=>[t.id,t.client_name,t.title,t.owner,t.status,t.priority,t.due_date,t.created_at])];
+  const rows = [['Número','Cliente','Título','Responsável','Situação','Prioridade','Prazo','Criado em','Concluído em','Solução'], ...tickets.map(t=>[t.id,t.client_name,t.title,t.owner,t.status,t.priority,t.due_date,t.created_at,t.closed_at||'',t.solution||''])];
   return '\uFEFF' + rows.map(row=>row.map(csvCell).join(';')).join('\r\n');
 }

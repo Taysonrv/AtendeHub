@@ -18,6 +18,11 @@ Aplicação web independente para organizar atendimentos de pequenas empresas de
 - Isolamento dos clientes e chamados de cada empresa no servidor.
 - Equipe com perfis de administrador e atendente; ativação e desativação de acesso.
 - Alteração da própria senha, encerrando as outras sessões.
+- Edição de clientes e chamados com registro das mudanças do chamado no histórico.
+- Atribuição de novos chamados a usuários ativos da própria empresa.
+- Conclusão com solução obrigatória e data registrada; reabertura preserva a solução anterior no histórico.
+- Proteção contra sobrescrever uma edição feita por outra pessoa.
+- Relatórios com tempo corrido até a conclusão, conclusões dentro do prazo e solução no CSV.
 
 ## Executar
 
@@ -47,6 +52,8 @@ Antes de um piloto comercial: configurar hospedagem com HTTPS, backups e restaur
 As senhas são protegidas com scrypt e salt aleatório. O navegador recebe um cookie HttpOnly/SameSite; o banco armazena somente o resumo criptográfico do token da sessão. Cadastro e login têm limite de tentativas por endereço. O modo local usa HTTP. Uma hospedagem futura deve configurar `APP_ORIGIN` com a origem HTTPS correta e `SECURE_COOKIES=true`, além de adaptar o servidor e a infraestrutura; configurar somente essas variáveis não publica nem torna esta instalação pronta para produção.
 
 O filtro de período considera a data de abertura. A situação mostrada nos indicadores é a situação atual dos chamados selecionados. O percentual concluído não mede SLA nem produtividade individual. O gráfico diário apresenta os últimos sete dias dentro do recorte selecionado. O modo de demonstração é somente leitura e não altera os registros locais.
+
+O tempo até a conclusão considera horas corridas desde a abertura até a última conclusão, incluindo esperas e reaberturas; não mede esforço de trabalho nem SLA. Chamados antigos sem data de conclusão ficam fora desse cálculo. Reabrir um chamado remove sua data e solução do estado atual, mantendo a solução anterior no histórico. Os responsáveis antigos em texto são preservados; ao editar esse chamado, escolha uma pessoa ativa da equipe.
 
 ## Independência
 

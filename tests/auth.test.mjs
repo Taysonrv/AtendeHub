@@ -21,7 +21,7 @@ test('autenticação, isolamento entre empresas, permissões e revogação de se
     const registered=await a('/api/auth/register','POST',{company:'A',name:'Administrador A',email:'a@example.com',password});assert.equal(registered.status,201);assert.match(registered.session,/HttpOnly/);assert.match(registered.session,/SameSite=Strict/);
     assert.equal((await a('/api/auth/me')).data.role,'admin');
     const client=(await a('/api/clients','POST',{name:'Cliente A'})).data;
-    const payload={client_id:client.id,title:'Atendimento A',description:'Teste de acesso.',owner:'A',priority:'Normal',due_date:'2026-10-03'};
+    const payload={client_id:client.id,title:'Atendimento A',description:'Teste de acesso.',owner_id:(await a('/api/auth/me')).data.id,priority:'Normal',due_date:'2026-10-03'};
     const ticket=(await a('/api/tickets','POST',payload)).data;
     assert.equal((await b('/api/auth/register','POST',{company:'B',name:'Administrador B',email:'b@example.com',password})).status,201);
     assert.deepEqual((await b('/api/clients')).data,[]);assert.deepEqual((await b('/api/tickets')).data,[]);

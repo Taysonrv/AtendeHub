@@ -13,5 +13,9 @@ export function openDatabase(databasePath) {
     db.exec(`CREATE INDEX IF NOT EXISTS ${table}_organization ON ${table}(organization_id)`);
   }
   db.exec('CREATE INDEX IF NOT EXISTS events_ticket ON events(ticket_id); CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);');
+  const ticketColumns = db.prepare('PRAGMA table_info(tickets)').all().map(c=>c.name);
+  for(const [column,definition] of [['owner_id','INTEGER REFERENCES users(id)'],['closed_at','TEXT'],['solution',"TEXT NOT NULL DEFAULT ''"],['version','INTEGER NOT NULL DEFAULT 0']]) {
+    if(!ticketColumns.includes(column)) db.exec(`ALTER TABLE tickets ADD COLUMN ${column} ${definition}`);
+  }
   return db;
 }
